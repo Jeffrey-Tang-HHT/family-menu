@@ -678,64 +678,6 @@
 
   #subcatRow { display: none; }
   #subcatRow.visible { display: block; }
-
-  .form-textarea {
-    width: 100%;
-    background: var(--paper-light);
-    border: 1.5px solid rgba(60, 30, 10, 0.25);
-    padding: 11px 14px;
-    font-family: 'Courier New', 'Noto Sans Mono CJK TC', monospace;
-    font-size: 12px;
-    color: var(--ink);
-    min-height: 90px;
-    resize: vertical;
-    line-height: 1.5;
-  }
-
-  .form-textarea:focus {
-    outline: none;
-    border-color: var(--vermilion);
-  }
-
-  .sync-section {
-    border-top: 1px dashed var(--gold);
-    padding-top: 18px;
-    margin-top: 18px;
-  }
-
-  .sync-section:first-of-type {
-    border-top: none;
-    padding-top: 0;
-    margin-top: 0;
-  }
-
-  .sync-heading {
-    font-family: 'ZCOOL XiaoWei', serif;
-    color: var(--vermilion);
-    font-size: 18px;
-    letter-spacing: 0.15em;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .inline-btn {
-    background: var(--gold);
-    color: var(--paper-light);
-    border: none;
-    padding: 8px 18px;
-    cursor: pointer;
-    font-family: 'Noto Serif TC', serif;
-    font-size: 14px;
-    letter-spacing: 0.1em;
-    margin-top: 10px;
-    transition: background 0.2s;
-  }
-
-  .inline-btn:hover { background: var(--gold-light); color: var(--ink); }
-  .inline-btn.dark { background: var(--ink); color: var(--paper-light); }
-  .inline-btn.dark:hover { background: var(--vermilion); color: var(--paper-light); }
   @keyframes pulse {
     0%, 100% { box-shadow: 4px 4px 0 var(--vermilion-deep); }
     50% { box-shadow: 4px 4px 0 var(--gold), 0 0 0 6px rgba(184, 137, 62, 0.3); }
@@ -786,7 +728,6 @@
       <button class="tool-btn" onclick="randomPick()">🎲 幫我選</button>
       <button class="tool-btn" onclick="openAddModal()">＋ 加新菜式</button>
       <button class="tool-btn" onclick="refreshFromCloud()">🔄 重新載入</button>
-      <button class="tool-btn" onclick="openSyncModal()">📤 共享菜單</button>
       <button class="tool-btn" onclick="clearAll()">清空重選</button>
       <button class="tool-btn primary" onclick="openModal()">查看選擇 →</button>
     </div>
@@ -855,33 +796,6 @@
     <div class="modal-actions">
       <button onclick="submitNewDish()">＋ 加入菜單</button>
       <button class="gold" onclick="closeAddModal()">取消</button>
-    </div>
-  </div>
-</div>
-
-<!-- Sync / Share Modal -->
-<div class="modal-overlay" id="syncModal" onclick="if(event.target===this)closeSyncModal()">
-  <div class="modal">
-    <div class="modal-title">共享菜單</div>
-    <div class="modal-sub">家人之間同步自家菜式</div>
-
-    <div class="sync-section">
-      <div class="sync-heading">📤 你嘅自家菜式</div>
-      <div class="form-hint" style="margin-bottom: 10px;">複製以下文字，畀屋企人 paste 入佢嘅版本</div>
-      <textarea class="form-textarea" id="exportArea" readonly></textarea>
-      <button class="inline-btn" onclick="copyExport()">📋 複製</button>
-    </div>
-
-    <div class="sync-section">
-      <div class="sync-heading">📥 從文字匯入</div>
-      <div class="form-hint" style="margin-bottom: 10px;">將屋企人發過嚟嘅文字 paste 落呢度</div>
-      <textarea class="form-textarea" id="importArea" placeholder="將屋企人嘅菜單代碼 paste 入嚟..."></textarea>
-      <button class="inline-btn dark" onclick="doImport(false)">＋ 合併匯入</button>
-      <button class="inline-btn dark" onclick="doImport(true)">⟳ 完全取代</button>
-    </div>
-
-    <div class="modal-actions">
-      <button class="gold" onclick="closeSyncModal()">關閉</button>
     </div>
   </div>
 </div>
@@ -1421,74 +1335,7 @@
   }
 
   // ----- Sync / Share -----
-  function openSyncModal() {
-    document.getElementById('exportArea').value = customDishes.length
-      ? JSON.stringify(customDishes)
-      : '（你尚未加任何自家菜式）';
-    document.getElementById('importArea').value = '';
-    document.getElementById('syncModal').classList.add('visible');
-  }
-
-  function closeSyncModal() {
-    document.getElementById('syncModal').classList.remove('visible');
-  }
-
-  function copyExport() {
-    if (!customDishes.length) {
-      alert('尚未有自家菜式可分享');
-      return;
-    }
-    const text = JSON.stringify(customDishes);
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = event.target;
-      const old = btn.textContent;
-      btn.textContent = '✓ 已複製';
-      btn.style.background = 'var(--jade)';
-      setTimeout(() => {
-        btn.textContent = old;
-        btn.style.background = '';
-      }, 1800);
-    }).catch(() => alert('複製失敗，請手動選取文字'));
-  }
-
-  async function doImport(replace) {
-    const raw = document.getElementById('importArea').value.trim();
-    if (!raw) { alert('請先 paste 菜單代碼'); return; }
-
-    let incoming;
-    try {
-      incoming = JSON.parse(raw);
-      if (!Array.isArray(incoming)) throw new Error('not an array');
-    } catch (e) {
-      alert('代碼格式有誤，請檢查係咪完整 paste 咗');
-      return;
-    }
-
-    // Validate each item
-    const valid = incoming.filter(d =>
-      typeof d === 'object' && d !== null &&
-      typeof d.cat === 'number' && typeof d.name === 'string'
-    );
-
-    if (!valid.length) { alert('代碼入面冇有效菜式'); return; }
-
-    if (replace) {
-      if (!confirm(`完全取代會清除你目前 ${customDishes.length} 個自家菜式，確定？`)) return;
-      customDishes = valid;
-    } else {
-      // Merge: skip duplicates by name
-      const existing = new Set(customDishes.map(d => d.name));
-      const newOnes = valid.filter(d => !existing.has(d.name));
-      customDishes = customDishes.concat(newOnes);
-      alert(`成功匯入 ${newOnes.length} 個新菜式（已跳過 ${valid.length - newOnes.length} 個重複）`);
-    }
-
-    await saveCustomDishes();
-    closeSyncModal();
-    renderMenu();
-    wire();
-    updateCart();
-  }
+  // Removed: Firebase handles auto-sync now
 
   async function refreshFromCloud() {
     await loadCustomDishes();
